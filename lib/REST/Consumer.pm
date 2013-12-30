@@ -17,15 +17,18 @@ our $VERSION = '0.07';
 my $global_configuration = {};
 my %service_clients;
 my $data_path = $ENV{DATA_PATH} || $ENV{TMPDIR} || '/tmp';
-my $throw_exceptions = 1;
 
 # make sure config gets loaded from url every 5 minutes
 my $config_reload_interval = 60 * 5;
 
 sub throw_exceptions {
-	my ($class, $value) = @_;
-	$throw_exceptions = $value if defined $value;
-	return $throw_exceptions;
+	my ($self, $value) = @_;
+        if (@_ == 2) {
+          $self->{throw_exceptions} = $value;
+          return $self;
+        } else {
+          return $self->{throw_exceptions};
+        }
 }
 
 sub configure {
@@ -144,6 +147,7 @@ sub _validate_client_config {
 		agent => $config->{user_agent} || "REST-Consumer/$VERSION",
 
 		auth => $config->{auth} || {},
+                throw_exceptions =>  $config->{throw_exceptions} // 1,
 	};
 
 	if (!$valid->{host} and !$valid->{url}) {
@@ -450,7 +454,7 @@ sub get_response_for_request {
 	# 405 Method not allowed
 	# 413 Request Entity to large
 	if (!$args{retry} or scalar grep {$response->code() == $_} qw(403 404 405 413)) {
-		return if !$throw_exceptions;
+		return unless $self->throw_exceptions;
 		REST::Consumer::RequestException->throw(
 			request  => $http_request,
 			response => $response,
@@ -463,7 +467,7 @@ sub get_response_for_request {
 
 	# die if we've exceeded the retry limit
 	if ($args{_attempts} > $args{retry}) {
-		return if !$throw_exceptions;
+		return unless $self->throw_exceptions;
 		REST::Consumer::RequestException->throw(
 			request  => $http_request,
 			response => $response,
