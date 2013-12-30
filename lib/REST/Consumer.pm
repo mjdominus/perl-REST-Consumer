@@ -130,7 +130,7 @@ sub _validate_client_config {
 		port    => $config->{port},
 
 		# timeout on requests to the service
-		timeout => $config->{timeout} || 10,
+		timeout => $config->{timeout} // 10,
 
 		# retry this many times if we don't get a 200 response from the service
 		retry   => exists $config->{retry} ? $config->{retry} : exists $config->{retries} ? $config->{retries} : 0,
@@ -139,7 +139,7 @@ sub _validate_client_config {
 		verbose => $config->{verbose} || 0,
 
 		# enable persistent connection
-		keep_alive => $config->{keep_alive} || 1,
+		keep_alive => $config->{keep_alive} // 1,
 
 		agent => $config->{user_agent} || "REST-Consumer/$VERSION",
 
