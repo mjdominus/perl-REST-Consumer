@@ -431,10 +431,12 @@ sub get_response_for_request {
 
 	my $user_agent = $self->user_agent;
 	my $response = $user_agent->request($http_request);
+        $self->debug_n(2, "REQUEST:<" . $http_request->as_string . ">");
 
 	$self->{_last_request} = $http_request;
 	$self->{_last_response} = $response;
 	$self->debug( sprintf('Got response: %s', $response->code()));
+        $self->debug_n(2,  "RESPONSE:<" . $response->as_string . ">");
 
 	if ($response and $response->is_success()) {
 		return $response;
@@ -509,11 +511,16 @@ sub put {
 
 
 # print status messages to stderr if running in verbose mode
-sub debug {
-	my $self = shift;
-	return unless $self->{verbose};
+sub debug_n {
+	my ($self, $level, @messages) = @_;
+	return unless $self->{verbose} >= $level;
 	local $\ = "\n";
-	print STDERR @_;
+	print STDERR @messages;
+}
+
+sub debug {
+  my $self = shift;
+  $self->debug_n(1, @_);
 }
 
 1;
