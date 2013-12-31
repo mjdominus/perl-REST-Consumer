@@ -1,5 +1,5 @@
 package REST::Consumer;
-# a generic client for talking to restful web services
+# ABSTRACT: a generic client for talking to restful web services
 
 use strict;
 use warnings;
@@ -11,8 +11,6 @@ use HTTP::Request;
 use HTTP::Headers;
 use File::Path qw( mkpath );
 use REST::Consumer::RequestException;
-
-our $VERSION = '0.07';
 
 my $global_configuration = {};
 my %service_clients;
@@ -127,6 +125,7 @@ sub service {
 
 sub _validate_client_config {
 	my ($config) = @_;
+        our $VERSION;
 	my $valid = {
 		host    => $config->{host},
 		url     => $config->{url},
