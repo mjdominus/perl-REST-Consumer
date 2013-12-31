@@ -39,9 +39,13 @@ my $post_result = $client->get(
 	}
 );
 
-is $client->last_request->uri->as_string, "http://localhost:80/test/path/to/resource?qux=baz&foo=bar",
-	'GET with query string params gets constructed correctly';
+{
+    my $uri = $client->last_request->uri->as_string;
 
+    ok($uri eq "http://localhost:80/test/path/to/resource?qux=baz&foo=bar"
+     ||$uri eq "http://localhost:80/test/path/to/resource?foo=bar&qux=baz",
+       'GET with query string params gets constructed correctly');
+}
 # test the interface.  the client will call the mocked LWP::UserAgent::request method above
 # and return the uri string as its response content
 $post_result = $client->post(

@@ -1,9 +1,10 @@
 package REST::Consumer;
-# a generic client for talking to restful web services
+# ABSTRACT: a generic client for talking to restful web services
 
 use strict;
 use warnings;
 
+use Carp qw(croak);
 use LWP::UserAgent;
 use URI;
 use JSON::XS;
@@ -12,20 +13,21 @@ use HTTP::Headers;
 use File::Path qw( mkpath );
 use REST::Consumer::RequestException;
 
-our $VERSION = '0.07';
-
 my $global_configuration = {};
 my %service_clients;
 my $data_path = $ENV{DATA_PATH} || $ENV{TMPDIR} || '/tmp';
-my $throw_exceptions = 1;
 
 # make sure config gets loaded from url every 5 minutes
 my $config_reload_interval = 60 * 5;
 
 sub throw_exceptions {
-	my ($class, $value) = @_;
-	$throw_exceptions = $value if defined $value;
-	return $throw_exceptions;
+	my ($self, $value) = @_;
+        if (@_ == 2) {
+          $self->{throw_exceptions} = $value;
+          return $self;
+        } else {
+          return $self->{throw_exceptions};
+        }
 }
 
 sub configure {
@@ -124,13 +126,14 @@ sub service {
 
 sub _validate_client_config {
 	my ($config) = @_;
+        our $VERSION;
 	my $valid = {
 		host    => $config->{host},
 		url     => $config->{url},
 		port    => $config->{port},
 
 		# timeout on requests to the service
-		timeout => $config->{timeout} || 10,
+		timeout => $config->{timeout} // 10,
 
 		# retry this many times if we don't get a 200 response from the service
 		retry   => exists $config->{retry} ? $config->{retry} : exists $config->{retries} ? $config->{retries} : 0,
@@ -139,15 +142,16 @@ sub _validate_client_config {
 		verbose => $config->{verbose} || 0,
 
 		# enable persistent connection
-		keep_alive => $config->{keep_alive} || 1,
+		keep_alive => $config->{keep_alive} // 1,
 
 		agent => $config->{user_agent} || "REST-Consumer/$VERSION",
 
 		auth => $config->{auth} || {},
+                throw_exceptions =>  $config->{throw_exceptions} // 1,
 	};
 
 	if (!$valid->{host} and !$valid->{url}) {
-		die "Either host or url is required";
+		croak "Either host or url is required";
 	}
 
 	return $valid;
@@ -431,10 +435,12 @@ sub get_response_for_request {
 
 	my $user_agent = $self->user_agent;
 	my $response = $user_agent->request($http_request);
+        $self->debug_n(2, "REQUEST:<" . $http_request->as_string . ">");
 
 	$self->{_last_request} = $http_request;
 	$self->{_last_response} = $response;
 	$self->debug( sprintf('Got response: %s', $response->code()));
+        $self->debug_n(2,  "RESPONSE:<" . $response->as_string . ">");
 
 	if ($response and $response->is_success()) {
 		return $response;
@@ -448,7 +454,7 @@ sub get_response_for_request {
 	# 405 Method not allowed
 	# 413 Request Entity to large
 	if (!$args{retry} or scalar grep {$response->code() == $_} qw(403 404 405 413)) {
-		return if !$throw_exceptions;
+		return unless $self->throw_exceptions;
 		REST::Consumer::RequestException->throw(
 			request  => $http_request,
 			response => $response,
@@ -461,7 +467,7 @@ sub get_response_for_request {
 
 	# die if we've exceeded the retry limit
 	if ($args{_attempts} > $args{retry}) {
-		return if !$throw_exceptions;
+		return unless $self->throw_exceptions;
 		REST::Consumer::RequestException->throw(
 			request  => $http_request,
 			response => $response,
@@ -509,11 +515,16 @@ sub put {
 
 
 # print status messages to stderr if running in verbose mode
-sub debug {
-	my $self = shift;
-	return unless $self->{verbose};
+sub debug_n {
+	my ($self, $level, @messages) = @_;
+	return unless $self->{verbose} >= $level;
 	local $\ = "\n";
-	print STDERR @_;
+	print STDERR @messages;
+}
+
+sub debug {
+  my $self = shift;
+  $self->debug_n(1, @_);
 }
 
 1;
