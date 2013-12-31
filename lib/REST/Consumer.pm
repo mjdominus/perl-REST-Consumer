@@ -4,6 +4,7 @@ package REST::Consumer;
 use strict;
 use warnings;
 
+use Carp qw(croak);
 use LWP::UserAgent;
 use URI;
 use JSON::XS;
@@ -150,7 +151,7 @@ sub _validate_client_config {
 	};
 
 	if (!$valid->{host} and !$valid->{url}) {
-		die "Either host or url is required";
+		croak "Either host or url is required";
 	}
 
 	return $valid;
