@@ -39,7 +39,8 @@ REST::Consumer->configure({
 	},
 });
 
-is(REST::Consumer->throw_exceptions, 1, "by default we throw exceptions");
+is(REST::Consumer->new(url=>"http://localhost/")->throw_exceptions, 1,
+   "by default we throw exceptions");
 
 {
 	my $response;
@@ -80,10 +81,11 @@ is(REST::Consumer->throw_exceptions, 1, "by default we throw exceptions");
 }
 
 {
-	REST::Consumer->throw_exceptions(0);
 	my $response;
 	eval {
-		$response = REST::Consumer->service('foo')->post(
+            my $service = REST::Consumer->service('foo')
+                                        ->throw_exceptions(0);
+		$response = $service->post(
 			path => '/fail',
 			content => {
 				foo => 'bar',
